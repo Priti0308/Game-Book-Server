@@ -11,8 +11,6 @@ const getCustomerModel = (req) => {
   return req.vendorDB.model("Customer", CustomerSchema);
 };
 
-
-
 // GET all customers
 router.get("/", protectVendor, async (req, res) => {
   try {

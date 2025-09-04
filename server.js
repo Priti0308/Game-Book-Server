@@ -31,10 +31,10 @@ app.get('/', (req, res) => {
 // Connect to main MongoDB (default DB for auth, admin, main vendor records)
 mongoose.connect(process.env.MONGO_URI, { dbName: "mainDB" })
   .then(() => {
-    console.log("✅ Main MongoDB connected");
+    console.log("✅ MongoDB connected");
     app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
   })
   .catch(err => {
-    console.error("❌ Main MongoDB connection error:", err);
+    console.error("❌MongoDB connection error:", err);
     process.exit(1); // stop server if DB fails
   });
