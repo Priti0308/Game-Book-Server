@@ -3,7 +3,7 @@ const express = require("express");
 const router = express.Router();
 const { protectVendor } = require("../middleware/authMiddleware");
 const customerSchema = require("../models/Customer");
-const receiptSchema = require("../models/Receipt");
+const { receiptSchema } = require("../models/Receipt");
 
 // Helper to get models per vendor DB
 const getModels = (req) => {
@@ -35,7 +35,8 @@ router.get("/customer/:customerId", protectVendor, async (req, res) => {
     const customer = await Customer.findById(customerId);
     if (!customer) return res.status(404).json({ message: "Customer not found" });
 
-    let match = { customerId: customerId };
+    let match = { customerName: customer.name };
+
 
     if (period === "daily" && date) {
       const start = new Date(date);
