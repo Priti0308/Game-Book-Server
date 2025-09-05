@@ -1,11 +1,10 @@
-// server.js
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
-const vendorRoutes = require('./routes/vendorRoutes'); // vendor mgmt routes
+const vendorRoutes = require('./routes/vendorRoutes');
 const customerRoutes = require("./routes/customerRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const receiptRoutes = require('./routes/receiptRoutes');
@@ -28,8 +27,11 @@ app.get('/', (req, res) => {
   res.send('Server is running with multi-vendor setup 🚀');
 });
 
-// Connect to main MongoDB (default DB for auth, admin, main vendor records)
-mongoose.connect(process.env.MONGO_URI, { dbName: "mainDB" })
+// Use a production URI if available, otherwise fallback to local
+const dbURI = process.env.MONGO_URI_PROD || process.env.MONGO_URI;
+
+// Connect to MongoDB
+mongoose.connect(dbURI, { dbName: "mainDB" })
   .then(() => {
     console.log("✅ MongoDB connected");
     app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
