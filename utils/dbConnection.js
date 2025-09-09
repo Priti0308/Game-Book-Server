@@ -1,36 +1,23 @@
-// utils/dbConnection.js
 const mongoose = require("mongoose");
 
-const connections = {}; // cache vendor DB connections
-
-/**
- * Get or create a Mongoose connection for a vendor
- * @param {string} vendorId - The vendor identifier (used as DB name)
- */
-const getVendorDb = async (vendorId) => {
-  if (!vendorId) throw new Error("Vendor ID is required to connect to DB");
-
-  // If already connected, reuse it
-  if (connections[vendorId]) {
-    return connections[vendorId];
-  }
-
-  // Create new connection
-  const uri = `${process.env.MONGO_URI}${vendorId}?retryWrites=true&w=majority`;
-
+const connectDB = async () => {
   try {
-  const connection = await mongoose.createConnection(uri, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  });
-  connections[vendorId] = connection;
-  console.log(`✅ Connected to vendor DB: ${vendorId}`);
-  return connection;
-} catch (err) {
-  console.error(`❌ Error connecting to vendor DB: ${vendorId}`, err);
-  throw err;
-}
+    const dbURI = process.env.MONGO_URI_PROD || process.env.MONGO_URI;
 
+    await mongoose.connect(dbURI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+
+    console.log(
+      `✅ MongoDB connected to ${
+        dbURI.includes("localhost") ? "Local (Game-Book)" : "Atlas (Game-Book)"
+      }`
+    );
+  } catch (err) {
+    console.error("❌ MongoDB connection error:", err.message);
+    process.exit(1); // Stop the server if DB fails
+  }
 };
 
-module.exports = { getVendorDb };
+module.exports = connectDB;

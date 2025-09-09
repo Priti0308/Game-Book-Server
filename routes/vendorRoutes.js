@@ -1,10 +1,10 @@
-// routes/vendorRoutes.js
+
 const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcryptjs");
 
-const Vendor = require("../models/Vendor"); // mainDB vendor model
-const vendorController = require("../controllers/vendorController"); // all controller functions
+const Vendor = require("../models/Vendor"); 
+const vendorController = require("../controllers/vendorController"); 
 const { protectVendor } = require("../middleware/authMiddleware");
 
 // ✅ Auth routes

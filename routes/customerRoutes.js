@@ -1,4 +1,3 @@
-//routes/customerRoutes.js
 const express = require("express");
 const router = express.Router();
 const { protectVendor } = require("../middleware/authMiddleware");
@@ -17,7 +16,6 @@ router.get("/", protectVendor, async (req, res) => {
     const Customer = getCustomerModel(req);
     const customers = await Customer.find().sort({ srNo: 1 });
     res.json({ customers }); // frontend will do res.data.customers
-
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Failed to fetch customers" });
@@ -28,7 +26,8 @@ router.get("/", protectVendor, async (req, res) => {
 router.post("/", protectVendor, async (req, res) => {
   try {
     const { name, contact, email, address } = req.body;
-    if (!name || !contact) return res.status(400).json({ message: "Name and contact required" });
+    if (!name || !contact)
+      return res.status(400).json({ message: "Name and contact required" });
 
     const Customer = getCustomerModel(req);
 
@@ -54,7 +53,8 @@ router.put("/:id", protectVendor, async (req, res) => {
     const Customer = getCustomerModel(req);
     const customer = await Customer.findById(id);
 
-    if (!customer) return res.status(404).json({ message: "Customer not found" });
+    if (!customer)
+      return res.status(404).json({ message: "Customer not found" });
 
     // Update fields
     customer.name = name || customer.name;
@@ -75,17 +75,17 @@ router.put("/:id", protectVendor, async (req, res) => {
 router.delete("/:id", protectVendor, async (req, res) => {
   try {
     const { id } = req.params;
-
     const Customer = getCustomerModel(req);
-    const customer = await Customer.findById(id);
 
-    if (!customer) return res.status(404).json({ message: "Customer not found" });
+    const deletedCustomer = await Customer.findByIdAndDelete(id);
 
-    await customer.remove();
+    if (!deletedCustomer) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
 
-    res.json({ message: "Customer deleted" });
+    res.json({ message: "Customer deleted successfully" });
   } catch (err) {
-    console.error(err);
+    console.error("Error deleting customer:", err); // Log the actual error for better debugging
     res.status(500).json({ message: "Failed to delete customer" });
   }
 });

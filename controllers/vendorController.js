@@ -1,8 +1,8 @@
-// controllers/vendorController.js
+
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const Vendor = require("../models/Vendor"); 
-const { getVendorDb } = require("../utils/dbConnection"); // ✅ import for multi-vendor DB
+const { getVendorDb } = require("../utils/dbConnection"); 
 
 // Multi-vendor login
 const loginVendor = async (req, res) => {
@@ -109,5 +109,4 @@ const applyVendor = async (req, res) => {
   }
 };
 
-// ✅ Export all functions
 module.exports = { loginVendor, getVendorProfile, applyVendor };
