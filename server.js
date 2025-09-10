@@ -27,12 +27,12 @@ app.use("/api/receipts", receiptRoutes);
 
 // Test route
 app.get("/", (req, res) => {
-  res.send("🚀 Server is running with Game-Book DB setup");
+  res.send("🚀 Server is running");
 });
 
 // Connect DB first, then start server
 connectDB().then(() => {
-  app.listen(PORT, () =>
-    console.log(`🚀 Server running on http://localhost:${PORT}`)
+  app.listen(PORT, "0.0.0.0", () =>
+    console.log(`🚀 Server running on port ${PORT}`)
   );
 });
