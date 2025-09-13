@@ -1,102 +1,122 @@
+const Receipt = require("../models/Receipt");
+const Customer = require("../models/Customer");
 
+// @desc    Create a new receipt
+// @route   POST /api/receipts
+// @access  Private
+const createReceipt = async (req, res) => {
+  try {
+    const { customerId, date, morningIncome, eveningIncome, ...otherFields } = req.body;
 
-// module.exports = ReceiptController;
-const PDFDocument = require('pdfkit');
-const { receiptSchema } = require('../models/Receipt');
-const CustomerSchema = require('../models/Customer');
-
-class ReceiptController {
-  static async getReceipt(req, res) {
-    try {
-const Receipt = req.vendorDB.model('Receipt', receiptSchema);
-      const Customer = req.vendorDB.model('Customer', CustomerSchema);
-
-      const { customerId } = req.query;
-      const query = customerId ? { customerId } : {};
-      const receipt = await Receipt.findOne(query).sort({ updatedAt: -1 });
-
-      let customerName = "";
-      if (receipt?.customerId) {
-        const customer = await Customer.findById(receipt.customerId);
-        customerName = customer?.name || "";
-      }
-
-      const businessName = req.vendor?.businessName || "";
-
-      res.json({
-        receipt: receipt || new Receipt(),
-        businessName,
-        customerName
-      });
-    } catch (error) {
-      res.status(500).json({ message: "Error fetching receipt", error });
+    if (!customerId || !date) {
+      return res.status(400).json({ message: "Customer and date are required." });
     }
-  }
 
-  static async saveReceipt(req, res) {
-    console.log("Incoming receipt body:", req.body);
-console.log("🧾 Receipt POST hit. Body:", req.body);
-    console.log("🔐 Vendor ID:", req.vendor?._id);
-    console.log("📦 Vendor DB available:", !!req.vendorDB);
-    try {
-      
-const Receipt = req.vendorDB.model('Receipt', receiptSchema);
-      req.body.date = new Date(req.body.date);
-
-const receipt = new Receipt({
-  ...req.body,
-  vendorId: req.vendor._id // ← inject manually
-});
-      await receipt.save();
-      res.json({ message: "Data saved successfully", data: receipt });
-    } catch (error) {
-      console.error("💥 Receipt save failed:", error.stack);
-
-      res.status(500).json({ message: "Error saving receipt", error });
+    const customer = await Customer.findById(customerId);
+    if (!customer || customer.vendorId.toString() !== req.vendor._id.toString()) {
+        return res.status(404).json({ message: "Customer not found or not associated with this vendor." });
     }
-  }
 
-  static async generatePDF(req, res) {
+    const totalIncome = (Number(morningIncome) || 0) + (Number(eveningIncome) || 0);
+
+    const receipt = new Receipt({
+      ...otherFields,
+      vendorId: req.vendor._id,
+      customerId,
+      customerName: customer.name, // Snapshot of customer name
+      businessName: req.vendor.businessName, // Snapshot of business name
+      date,
+      morningIncome,
+      eveningIncome,
+      totalIncome,
+    });
+
+    await receipt.save();
+    res.status(201).json({ message: "Receipt created successfully", receipt });
+
+  } catch (err) {
+    console.error("Error creating receipt:", err);
+    res.status(500).json({ message: "Failed to create receipt" });
+  }
+};
+
+// @desc    Get all receipts for the logged-in vendor
+// @route   GET /api/receipts
+// @access  Private
+const getAllReceipts = async (req, res) => {
+  try {
+    const receipts = await Receipt.find({ vendorId: req.vendor._id }).sort({ date: -1 });
+    res.json({ receipts });
+  } catch (err) {
+    console.error("Error fetching receipts:", err);
+    res.status(500).json({ message: "Failed to fetch receipts" });
+  }
+};
+
+// @desc    Get a single receipt by ID
+// @route   GET /api/receipts/:id
+// @access  Private
+const getReceiptById = async (req, res) => {
     try {
-      const { formData } = req.body;
-      const doc = new PDFDocument({ size: [420, 297], margin: 8 });
-      res.setHeader('Content-Disposition', 'attachment; filename="Receipt.pdf"');
-      res.setHeader('Content-Type', 'application/pdf');
+        const receipt = await Receipt.findOne({ _id: req.params.id, vendorId: req.vendor._id });
 
-      doc.font('fonts/NotoSerifDevanagari-Regular.ttf')
-        .fontSize(18)
-        .text(formData.businessName, 210, 10, { align: 'center' })
-        .fontSize(14)
-        .text(`नांव:- ${formData.customerName}`, 20, 40)
-        .text(`वार:- ${formData.day}`, 300, 40)
-        .text(`दि:- ${formData.date}`, 300, 60)
-        .moveDown()
-        .text('ओ.  रक्कम  ओ.  जोड  को.  पान', { continued: true })
-        .moveTo(20, 100)
-        .lineTo(400, 100)
-        .stroke()
-        .text(`आ.  ${formData.morningIncome}  आ.  ${formData.deduction}  को.`, 20, 110)
-        .text(`कु.  ${formData.eveningIncome}`, 20, 140)
-        .text(`टो.  ${formData.totalIncome}`, 20, 170)
-        .text(`क.  ${formData.deduction}`, 20, 200)
-        .text(`टो.  ${formData.afterDeduction}`, 20, 230)
-        .text(`पें.  ${formData.payment}`, 20, 260)
-        .text(`टो.  ${formData.remainingBalance}`, 20, 290)
-        .text(`मा.  ${formData.pendingAmount}`, 20, 320)
-        .text(`टो.  ${formData.finalTotal}`, 20, 350)
-        .moveTo(20, 380)
-        .lineTo(400, 380)
-        .stroke()
-        .text(`आड:- ${formData.advanceAmount}`, 20, 390)
-        .text(`टो:- ${formData.totalWithAdvance}`, 300, 390)
-        .end();
-
-      doc.pipe(res);
-    } catch (error) {
-      res.status(500).json({ message: "Error generating PDF", error });
+        if (!receipt) {
+            return res.status(404).json({ message: "Receipt not found" });
+        }
+        res.json(receipt);
+    } catch (err) {
+        console.error("Error fetching receipt:", err);
+        res.status(500).json({ message: "Server error" });
     }
-  }
-}
+};
 
-module.exports = ReceiptController;
+// @desc    Update a receipt
+// @route   PUT /api/receipts/:id
+// @access  Private
+const updateReceipt = async (req, res) => {
+    try {
+        const { morningIncome, eveningIncome, ...otherFields } = req.body;
 
+        const totalIncome = (Number(morningIncome) || 0) + (Number(eveningIncome) || 0);
+        
+        const updatedReceipt = await Receipt.findOneAndUpdate(
+            { _id: req.params.id, vendorId: req.vendor._id },
+            { ...otherFields, morningIncome, eveningIncome, totalIncome },
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedReceipt) {
+            return res.status(404).json({ message: "Receipt not found or you are not authorized to update it." });
+        }
+        res.json({ message: "Receipt updated successfully", receipt: updatedReceipt });
+    } catch (err) {
+        console.error("Error updating receipt:", err);
+        res.status(500).json({ message: "Failed to update receipt" });
+    }
+};
+
+// @desc    Delete a receipt
+// @route   DELETE /api/receipts/:id
+// @access  Private
+const deleteReceipt = async (req, res) => {
+    try {
+        const deletedReceipt = await Receipt.findOneAndDelete({ _id: req.params.id, vendorId: req.vendor._id });
+
+        if (!deletedReceipt) {
+            return res.status(404).json({ message: "Receipt not found or you are not authorized to delete it." });
+        }
+        res.json({ message: "Receipt deleted successfully" });
+    } catch (err) {
+        console.error("Error deleting receipt:", err);
+        res.status(500).json({ message: "Failed to delete receipt" });
+    }
+};
+
+
+module.exports = {
+  createReceipt,
+  getAllReceipts,
+  getReceiptById,
+  updateReceipt,
+  deleteReceipt,
+};
