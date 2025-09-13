@@ -1,34 +1,44 @@
-const User = require('../models/User');
-const bcrypt = require('bcryptjs');  // For password hashing
-const jwt = require('jsonwebtoken'); // For generating tokens
+const User = require("../models/User");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+
+// authController.js
 
 exports.login = async (req, res) => {
-  try {
-    const { role, username, mobile, password } = req.body;
+  try {
+    const { role, username, mobile, password } = req.body;
+    console.log("📥 Login request:", req.body);
 
-    // Find user based on role
-    let user;
-    if (role === 'admin') {
-      user = await User.findOne({ username, role });
-    } else {
-      user = await User.findOne({ mobile, role });
+    let user;
+    if (role === "admin") {
+      user = await User.findOne({ username, role });
+    } else {
+      user = await User.findOne({ mobile, role });
+    }
+
+    console.log("👤 Found user:", user);
+
+    // 👇 **ADD THIS CHECK HERE** 👇
+    // If no user is found OR if the user exists but has no password,
+    // send a clear error message instead of crashing.
+    if (!user || !user.password) {
+      console.warn("⚠️ User not found or password not set for:", { role, username, mobile });
+      return res.status(401).json({ message: "Invalid credentials" }); // Using 401 is better for security
     }
 
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    const isMatch = await bcrypt.compare(password, user.password);
+    console.log("🔑 Password match result:", isMatch);
 
-    // Compare passwords
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(401).json({ message: 'Invalid password' });
+    if (!isMatch) {
+      console.warn("⚠️ Invalid password for user:", user._id);
+      // Use the same generic message for security
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
 
-    // Create JWT token
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    res.json({ token, role: user.role });
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
+    // ... rest of your code
+    // ...
+  } catch (err) {
+    console.error("❌ Login error stack:", err.stack);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
 };

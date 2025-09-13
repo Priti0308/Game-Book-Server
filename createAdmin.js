@@ -1,43 +1,50 @@
-const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
-require('dotenv').config();
+const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
+require("dotenv").config();
 
-const User = require('./models/User');
+const User = require("./models/User"); // <-- adjust path if needed
 
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-  .then(() => console.log('✅ MongoDB connected'))
-  .catch(err => console.error('❌ MongoDB connection error:', err));
-
-async function createAdmin() {
+const createAdmin = async () => {
   try {
-    // Hash password
-    const adminPassword = await bcrypt.hash('admin123', 10);
+    // Connect to MongoDB
+    await mongoose.connect(process.env.MONGO_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log("✅ Connected to MongoDB");
+
+    const username = "admin"; // change if you want custom username
+    const password = "admin123"; 
+    const role = "admin";
 
     // Check if admin already exists
-    const existingAdmin = await User.findOne({ username: 'admin' });
-    if (existingAdmin) {
-      console.log('⚠️ Admin user already exists');
-      process.exit();
+    let admin = await User.findOne({ username, role });
+    if (admin) {
+      console.log("⚠️ Admin already exists:", admin.username);
+      process.exit(0);
     }
 
-    // Create admin user
-    const admin = new User({
-      role: 'admin',
-      username: 'admin',
-      password: adminPassword,
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create admin
+    admin = new User({
+      username,
+      password: hashedPassword,
+      role,
     });
 
     await admin.save();
+    console.log("🎉 Admin created successfully!");
+    console.log(`➡️ Username: ${username}`);
+    console.log(`➡️ Password: ${password}`);
+    console.log(`➡️ Role: ${role}`);
 
-    console.log('✅ Admin created successfully!');
-    process.exit();
+    process.exit(0);
   } catch (err) {
-    console.error('❌ Error creating admin:', err);
+    console.error("❌ Error creating admin:", err.message);
     process.exit(1);
   }
-}
+};
 
 createAdmin();
