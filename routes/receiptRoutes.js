@@ -1,160 +1,27 @@
+// file: routes/receipts.js
+
 const express = require("express");
 const router = express.Router();
-// FIX: Import 'protect' instead of 'protectVendor'
 const { protect } = require("../middleware/authMiddleware");
-const mongoose = require("mongoose");
-const PDFDocument = require('pdfkit'); // For PDF generation
-const { receiptSchema } = require("../models/Receipt");
-const CustomerSchema = require('../models/Customer');
+const {
+    createReceipt,
+    getAllReceipts,
+    updateReceipt,
+    deleteReceipt
+} = require("../controllers/receiptController"); // Import the controller functions
 
-// NOTE: This helper function is for a multi-database setup.
-// In a single-DB setup, this logic would be handled differently
-// (e.g., getting models directly and filtering by vendorId).
-// For now, assuming your auth middleware provides vendorDB.
-const getModels = (req) => {
-  if (!req.vendorDB) {
-    // Fallback for single DB for now, this part needs a proper refactor
-    // based on your final architecture decision.
-    // This is a temporary patch to avoid crashing if vendorDB is not set.
-    console.warn("Warning: vendorDB not available on request. Falling back to default models. This indicates an architecture mismatch.");
-    return {
-        Receipt: mongoose.model("Receipt", receiptSchema),
-        Customer: mongoose.model("Customer", CustomerSchema)
-    }
-  }
-  const Receipt = req.vendorDB.model("Receipt", receiptSchema);
-  const Customer = req.vendorDB.model("Customer", CustomerSchema);
-  return { Receipt, Customer };
-};
+// Define the API routes
+// A GET request to /api/receipts will get all receipts
+router.get("/", protect, getAllReceipts);
 
-// --- GET all receipts for the logged-in vendor ---
-// FIX: Use 'protect' instead of 'protectVendor'
-router.get("/", protect, async (req, res) => {
-  try {
-    // In a single DB setup, you'd do this:
-    const Receipt = mongoose.model("Receipt", receiptSchema);
-    const receipts = await Receipt.find({ vendorId: req.vendor._id }).sort({ createdAt: -1 });
-    res.json({ receipts });
-  } catch (err) {
-    console.error("Error fetching receipts:", err);
-    res.status(500).json({ message: "Failed to fetch receipts" });
-  }
-});
+// A POST request to /api/receipts will create a new receipt
+router.post("/", protect, createReceipt);
 
-// --- POST a new receipt ---
-// FIX: Use 'protect' instead of 'protectVendor'
-router.post("/", protect, async (req, res) => {
-  try {
-    const Receipt = mongoose.model("Receipt", receiptSchema);
-    
-    // Create a new receipt instance with data from the request body
-    const receipt = new Receipt({
-        ...req.body,
-        date: new Date(req.body.date), // Ensure date is a proper Date object
-        vendorId: req.vendor._id      // Inject the logged-in vendor's ID
-    });
-    
-    await receipt.save();
-    res.status(201).json({ message: "Receipt saved successfully", data: receipt });
-  } catch (error) {
-    console.error("Error saving receipt:", error);
-    res.status(500).json({ message: "Error saving receipt", error: error.message });
-  }
-});
+// **THE FIX: Add the missing PUT route for updates**
+// A PUT request to /api/receipts/:id will update a specific receipt
+router.put("/:id", protect, updateReceipt);
 
-// --- DELETE a specific receipt by its ID ---
-// FIX: Use 'protect' instead of 'protectVendor'
-router.delete("/:receiptId", protect, async (req, res) => {
-  try {
-    const Receipt = mongoose.model("Receipt", receiptSchema);
-    const { receiptId } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(receiptId)) {
-      return res.status(400).json({ message: "Invalid receipt ID format." });
-    }
-
-    // Security check: ensure the receipt belongs to the logged-in vendor before deleting
-    const deletedReceipt = await Receipt.findOneAndDelete({ _id: receiptId, vendorId: req.vendor._id });
-
-    if (!deletedReceipt) {
-      return res.status(404).json({ message: "Receipt not found or you are not authorized to delete it." });
-    }
-
-    res.json({ message: "Receipt deleted successfully." });
-  } catch (err) {
-    console.error("Error deleting receipt:", err);
-    res.status(500).json({ message: "Failed to delete receipt" });
-  }
-});
-
-// --- POST to generate a PDF from receipt data ---
-// FIX: Use 'protect' instead of 'protectVendor'
-router.post("/generate-pdf", protect, (req, res) => {
-    try {
-      const { formData } = req.body;
-      // Using a standard A5 paper size in landscape for a wide receipt format
-      const doc = new PDFDocument({ size: 'A5', layout: 'landscape', margin: 20 });
-
-      res.setHeader('Content-Disposition', 'attachment; filename="Receipt.pdf"');
-      res.setHeader('Content-Type', 'application/pdf');
-
-      doc.pipe(res);
-
-      // IMPORTANT: Ensure this font file exists in a 'fonts' folder in your project root
-      doc.font('fonts/NotoSerifDevanagari-Regular.ttf');
-      
-      // Header
-      doc.fontSize(16).text(formData.businessName, { align: 'center' });
-      doc.moveDown(1.5);
-
-      // Customer and Date Info
-      const infoY = doc.y;
-      doc.fontSize(11).text(`नांव:- ${formData.customerName}`, { continued: false });
-      doc.text(`वार:- ${formData.day}`, { align: 'right' });
-      doc.y = infoY; // Reset Y to align date below day
-      doc.text(`दि:- ${formData.date}`, { align: 'right' });
-      doc.moveDown(1.5);
-
-      // --- Table Content ---
-      // This section simulates a table using text positioning for precise layout
-      const tableTop = doc.y;
-      const col1 = 40, col2 = 120, col3 = 300, col4 = 380;
-      const rowHeight = 18;
-
-      const drawRow = (y, items) => {
-          doc.fontSize(10).text(items[0], col1, y);
-          doc.text(items[1], col2, y, { width: 60, align: 'right' });
-          doc.text(items[2], col3, y);
-          doc.text(items[3], col4, y, { width: 60, align: 'right' });
-      };
-
-      drawRow(tableTop + rowHeight * 0, ['आ.', formData.morningIncome, 'पें.', formData.payment]);
-      drawRow(tableTop + rowHeight * 1, ['कु.', formData.eveningIncome, 'टो.', formData.remainingBalance]);
-      drawRow(tableTop + rowHeight * 2, ['टो.', formData.totalIncome, 'मा.', formData.pendingAmount]);
-      drawRow(tableTop + rowHeight * 3, ['क.', formData.deduction, 'टो.', formData.finalTotal]);
-      drawRow(tableTop + rowHeight * 4, ['टो.', formData.afterDeduction, '', '']);
-      
-      // Bottom section with signature and totals
-      const bottomY = tableTop + rowHeight * 6;
-      const boxWidth = (doc.page.width / 2) - doc.page.margins.left - 5;
-      
-      doc.rect(doc.page.margins.left, bottomY, boxWidth, 70).stroke(); // Left box for notes/signature
-      
-      const rightBoxX = (doc.page.width / 2) + 5;
-      doc.rect(rightBoxX, bottomY, boxWidth, 70).stroke(); // Right box for final totals
-      
-      doc.fontSize(11).text(`आड:-`, rightBoxX + 10, bottomY + 10);
-      doc.text(formData.advanceAmount, rightBoxX, bottomY + 10, { width: boxWidth - 20, align: 'right' });
-      doc.text(`टो:-`, rightBoxX + 10, bottomY + 40);
-      doc.text(formData.totalWithAdvance, rightBoxX, bottomY + 40, { width: boxWidth - 20, align: 'right' });
-
-      doc.end();
-
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      res.status(500).json({ message: "Error generating PDF", error: error.message });
-    }
-});
+// A DELETE request to /api/receipts/:id will delete a specific receipt
+router.delete("/:id", protect, deleteReceipt);
 
 module.exports = router;
-
