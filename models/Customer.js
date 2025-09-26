@@ -15,6 +15,13 @@ const customerSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
+  // --- ADDED THIS ---
+  company: {
+    type: String,
+    required: [true, "Please select a company"],
+    trim: true,
+  },
+  // ------------------
   contact: {
     type: String,
     required: true,

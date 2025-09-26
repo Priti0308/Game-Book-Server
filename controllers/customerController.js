@@ -1,42 +1,41 @@
 const Customer = require("../models/Customer");
 const Counter = require("../models/Counter");
 
-/**
- * Helper function to atomically get the next serial number for a given vendor.
- * This prevents race conditions where two customers might get the same srNo.
- * @param {string} vendorId - The ID of the vendor.
- * @returns {Promise<number>} The next unique serial number.
- */
+// Helper function to get the next serial number
 async function getNextSequence(vendorId) {
   const counterName = `customerSrNo_${vendorId}`;
   const result = await Counter.findByIdAndUpdate(
     counterName,
     { $inc: { seq: 1 } },
-    { new: true, upsert: true } // Increment sequence, or create counter if it doesn't exist
+    { new: true, upsert: true }
   );
   return result.seq;
 }
 
-// @desc    Create a new customer for the logged-in vendor
+// @desc    Create a new customer
 // @route   POST /api/customers
 // @access  Private
 const createCustomer = async (req, res) => {
   try {
-    const { name, contact, email, address } = req.body;
-    if (!name || !contact) {
-      return res.status(400).json({ message: "Name and contact are required." });
+    // 1. Destructure the new 'company' field from the request body
+    const { name, contact, email, address, company } = req.body;
+
+    // 2. Add 'company' to the validation check
+    if (!name || !contact || !company) {
+      return res.status(400).json({ message: "Name, contact, and company are required." });
     }
 
-    const vendorId = req.vendor._id; // Get vendor ID from middleware
+    const vendorId = req.vendor._id;
     const srNo = await getNextSequence(vendorId);
 
     const customer = new Customer({
-      vendorId, // Link customer to the logged-in vendor
+      vendorId,
       srNo,
       name,
       contact,
       email,
       address,
+      company, // 3. Add 'company' to the new customer object
     });
 
     await customer.save();
@@ -44,18 +43,21 @@ const createCustomer = async (req, res) => {
   } catch (err) {
     console.error(err);
     if (err.code === 11000) {
-      return res.status(400).json({ message: "A customer with this contact number or Sr. No. already exists for your business." });
+      return res.status(400).json({ message: "A customer with this contact number already exists." });
+    }
+     if (err.name === 'ValidationError') {
+      return res.status(400).json({ message: err.message });
     }
     res.status(500).json({ message: "Server error while adding customer." });
   }
 };
 
-// @desc    Get all customers for the logged-in vendor
+// @desc    Get all customers for the vendor
 // @route   GET /api/customers
 // @access  Private
 const getAllCustomers = async (req, res) => {
   try {
-    // Find only customers that belong to the logged-in vendor
+    // This query correctly fetches all fields, including 'company'
     const customers = await Customer.find({ vendorId: req.vendor._id }).sort({ srNo: 1 });
     res.json({ customers });
   } catch (err) {
@@ -75,15 +77,14 @@ const updateCustomer = async (req, res) => {
       return res.status(404).json({ message: "Customer not found." });
     }
 
-    // SECURITY CHECK: Ensure the customer belongs to the logged-in vendor
     if (customer.vendorId.toString() !== req.vendor._id.toString()) {
-      return res.status(403).json({ message: "Access denied. You are not authorized to update this customer." });
+      return res.status(403).json({ message: "Access denied." });
     }
     
     const updatedCustomer = await Customer.findByIdAndUpdate(
       req.params.id,
-      req.body, // Pass the update data
-      { new: true, runValidators: true } // Options: return the updated document
+      req.body,
+      { new: true, runValidators: true }
     );
 
     res.json({ message: "Customer updated successfully", customer: updatedCustomer });
@@ -107,9 +108,8 @@ const deleteCustomer = async (req, res) => {
       return res.status(404).json({ message: "Customer not found." });
     }
 
-    // SECURITY CHECK: Ensure the customer belongs to the logged-in vendor
     if (customer.vendorId.toString() !== req.vendor._id.toString()) {
-      return res.status(403).json({ message: "Access denied. You are not authorized to delete this customer." });
+      return res.status(403).json({ message: "Access denied." });
     }
 
     await Customer.findByIdAndDelete(req.params.id);
