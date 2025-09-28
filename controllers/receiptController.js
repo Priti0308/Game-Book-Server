@@ -1,5 +1,3 @@
-// file: controllers/receiptController.js
-
 const Receipt = require("../models/Receipt");
 const Customer = require("../models/Customer");
 

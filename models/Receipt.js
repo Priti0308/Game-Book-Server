@@ -1,65 +1,64 @@
 const mongoose = require("mongoose");
 
+// Defines the structure for each object inside the `gameRows` array
+const gameRowSchema = new mongoose.Schema({
+    type: { type: String, trim: true },
+    income: { type: Number, default: 0 },
+    o: { type: Number, default: 0 },
+    jod: { type: Number, default: 0 },
+    ko: { type: Number, default: 0 },
+    pan: { type: String, trim: true },
+    gun: { type: String, trim: true }
+}, { _id: false }); // No separate _id for each row
+
+// Defines the structure for the new Open/Close values
+const openCloseSchema = new mongoose.Schema({
+    open: { type: String, trim: true },
+    close1: { type: String, trim: true },
+    close2: { type: String, trim: true }
+}, { _id: false });
+
 const receiptSchema = new mongoose.Schema({
-  // --- Core References ---
-  vendorId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Vendor",
-    required: true,
-  },
-  customerId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Customer",
-    required: true,
-  },
+    // --- Core References ---
+    vendorId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Vendor",
+        required: true,
+    },
+    customerId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Customer",
+        required: true,
+    },
 
-  // --- Snapshot Data ---
-  businessName: {
-    type: String,
-    required: true,
-    trim: true,
-  },
-  customerName: {
-    type: String,
-    required: true,
-    trim: true,
-  },
+    // --- Snapshot Data ---
+    businessName: { type: String, required: true, trim: true },
+    customerName: { type: String, required: true, trim: true },
+    customerCompany: { type: String, trim: true }, // Added field
 
-  // --- Date and Time ---
-  date: {
-    type: Date,
-    required: true,
-  },
-  day: {
-    type: String,
-    trim: true,
-  },
+    // --- Date and Time ---
+    date: { type: Date, required: true },
+    day: { type: String, trim: true },
 
-  // --- Financial Calculations ---
-  morningIncome: { type: Number, default: 0 },
-  eveningIncome: { type: Number, default: 0 },
-  totalIncome: { type: Number, default: 0 },
-  deduction: { type: Number, default: 0 },
-  afterDeduction: { type: Number, default: 0 },
-  payment: { type: Number, default: 0 },
-  remainingBalance: { type: Number, default: 0 },
-  pendingAmount: { type: Number, default: 0 },
-  finalTotal: { type: Number, default: 0 },
-  advanceAmount: { type: Number, default: 0 },
-  cuttingAmount: { type: Number, default: 0 }, // <-- ADDED
-  totalWithAdvance: { type: Number, default: 0 },
+    // --- NEW DYNAMIC DATA STRUCTURES ---
+    gameRows: [gameRowSchema],
+    openCloseValues: openCloseSchema,
 
-  // --- Game Number Inputs ---
-  morningO: { type: Number, default: 0 },   // <-- ADDED
-  morningJod: { type: Number, default: 0 }, // <-- ADDED
-  morningKo: { type: Number, default: 0 },  // <-- ADDED
-  eveningO: { type: Number, default: 0 },   // <-- ADDED
-  eveningJod: { type: Number, default: 0 }, // <-- ADDED
-  eveningKo: { type: Number, default: 0 },  // <-- ADDED
+    // --- Financial Calculations (Sent from Frontend) ---
+    // Note: The old fixed fields like 'morningIncome' are removed.
+    totalIncome: { type: Number, default: 0 },
+    deduction: { type: Number, default: 0 },
+    afterDeduction: { type: Number, default: 0 },
+    payment: { type: Number, default: 0 },
+    remainingBalance: { type: Number, default: 0 },
+    pendingAmount: { type: Number, default: 0 },
+    finalTotal: { type: Number, default: 0 },
+    advanceAmount: { type: Number, default: 0 },
+    cuttingAmount: { type: Number, default: 0 },
+    totalWithAdvance: { type: Number, default: 0 },
 
 }, {
-  // Automatically add 'createdAt' and 'updatedAt' fields
-  timestamps: true,
+    timestamps: true, // Automatically add 'createdAt' and 'updatedAt' fields
 });
 
 module.exports = mongoose.model("Receipt", receiptSchema);

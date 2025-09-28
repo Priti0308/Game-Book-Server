@@ -16,11 +16,11 @@ const customerSchema = new mongoose.Schema({
     trim: true,
   },
   // --- ADDED THIS ---
-  company: {
-    type: String,
-    required: [true, "Please select a company"],
-    trim: true,
-  },
+  // company: {
+  //   type: String,
+  //   required: [true, "Please select a company"],
+  //   trim: true,
+  // },
   // ------------------
   contact: {
     type: String,

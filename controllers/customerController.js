@@ -35,7 +35,7 @@ const createCustomer = async (req, res) => {
       contact,
       email,
       address,
-      company, // 3. Add 'company' to the new customer object
+     
     });
 
     await customer.save();
