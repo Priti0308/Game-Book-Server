@@ -18,11 +18,11 @@ async function getNextSequence(vendorId) {
 const createCustomer = async (req, res) => {
   try {
     // 1. Destructure the new 'company' field from the request body
-    const { name, contact, email, address, company } = req.body;
+    const { name, contact, email, address } = req.body;
 
     // 2. Add 'company' to the validation check
-    if (!name || !contact || !company) {
-      return res.status(400).json({ message: "Name, contact, and company are required." });
+    if (!name || !contact) {
+      return res.status(400).json({ message: "Name and contact are required." });
     }
 
     const vendorId = req.vendor._id;
