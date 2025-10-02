@@ -12,8 +12,8 @@ const createAdmin = async () => {
     console.log("✅ Connected to MongoDB");
 
     // --- Admin User Configuration ---
-    const username = "priti"; 
-    const password = "admin@2003"; // Use a strong password in production
+    const username = "admin"; 
+    const password = "admin123"; // Use a strong password in production
     const role = "admin";
     // --------------------------------
 
