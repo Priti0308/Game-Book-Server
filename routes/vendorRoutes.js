@@ -1,4 +1,3 @@
-// vendorRoutes.js
 
 const express = require("express");
 const router = express.Router();
@@ -6,12 +5,14 @@ const router = express.Router();
 const {
   registerVendor,
   loginVendor,
-  getVendorProfile,       // <-- This is the handler you want
+  getVendorProfile,       
   updateVendorProfile,
+  getAllVendors,
 } = require("../controllers/vendorController");
 
 const { protect } = require("../middleware/authMiddleware");
 
+router.get("/", getAllVendors);
 // Public Routes
 router.post("/register", registerVendor);
 router.post("/login", loginVendor);

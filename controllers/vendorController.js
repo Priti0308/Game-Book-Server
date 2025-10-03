@@ -119,9 +119,25 @@ const updateVendorProfile = async (req, res) => {
   }
 };
 
+const getAllVendors = async (req, res) => {
+  try {
+    // This log will show up in your Render logs
+    console.log("✅ GET /api/vendors endpoint was hit successfully!");
+
+    // Find all documents in the Vendor collection
+    const vendors = await Vendor.find({});
+
+    res.status(200).json(vendors);
+  } catch (error) {
+    console.error("Error fetching all vendors:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
 module.exports = {
   registerVendor,
   loginVendor,
   getVendorProfile,
   updateVendorProfile,
+  getAllVendors,
 };
