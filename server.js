@@ -15,12 +15,19 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+app.get("/", (req, res) => {
+  res.send("🚀 Ping successful! The server is alive and responding.");
+});
+
 // Use Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/vendors", vendorRoutes);
 app.use("/api/customers", customerRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/receipts", receiptRoutes);
+
+
+
 
 const PORT = process.env.PORT || 5000;
 

@@ -1,44 +1,58 @@
+// Filename: controllers/authController.js
+
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 exports.login = async (req, res) => {
   try {
+    console.log("➡️ [LOGIN] API endpoint hit.");
     const { role, username, mobile, password } = req.body;
-    console.log("📥 Login request:", req.body);
 
     let user;
+    console.log("➡️ [LOGIN] Searching for user in database...");
+
     if (role === "admin") {
       user = await User.findOne({ username, role });
-    } else {
+    } else if (role === "vendor") {
       user = await User.findOne({ mobile, role });
     }
 
-    console.log("👤 Found user:", user);
+    // THIS IS THE CRITICAL LOG. If you don't see this, the await User.findOne() is hanging.
+    console.log("➡️ [LOGIN] Database search complete.");
 
-    // 👇 **ADD THIS CHECK HERE** 👇
-    // If no user is found OR if the user exists but has no password,
-    // send a clear error message instead of crashing.
-    if (!user || !user.password) {
-      console.warn("⚠️ User not found or password not set for:", {
-        role,
-        username,
-        mobile,
-      });
-      return res.status(401).json({ message: "Invalid credentials" }); // Using 401 is better for security
+    if (!user) {
+      console.log("❌ [LOGIN] User not found.");
+      return res.status(401).json({ message: "Invalid credentials" });
     }
-
+    
+    console.log("✅ [LOGIN] User found. Comparing passwords...");
     const isMatch = await bcrypt.compare(password, user.password);
-    console.log("🔑 Password match result:", isMatch);
 
     if (!isMatch) {
-      console.warn("⚠️ Invalid password for user:", user._id);
-      // Use the same generic message for security
+      console.log("❌ [LOGIN] Password does not match.");
       return res.status(401).json({ message: "Invalid credentials" });
-    } // ... rest of your code
-    // ...
+    }
+
+    console.log("✅ [LOGIN] Password match! Creating JWT...");
+    const payload = { user: { id: user.id, role: user.role } };
+
+    jwt.sign(
+      payload,
+      process.env.JWT_SECRET,
+      { expiresIn: "24h" },
+      (err, token) => {
+        if (err) throw err;
+        console.log("✅ [LOGIN] Token created. Sending success response.");
+        res.status(200).json({
+          message: "Login successful!",
+          token,
+          user: { id: user.id, username: user.username, role: user.role }
+        });
+      }
+    );
   } catch (err) {
-    console.error("❌ Login error stack:", err.stack);
-    res.status(500).json({ message: "Server error", error: err.message });
+    console.error("🔥 [LOGIN] A critical error occurred:", err.message);
+    res.status(500).json({ message: "Server error" });
   }
 };
