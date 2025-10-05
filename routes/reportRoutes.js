@@ -1,25 +1,16 @@
 const express = require("express");
 const router = express.Router();
 
-// FIX 1: Import the correct middleware function, 'protect'
 const { protect } = require("../middleware/authMiddleware");
+const { generateCustomerReport } = require("../controllers/reportController");
 
-// Import the controller functions
-const {
-    getAllCustomersForReport,
-    generateCustomerReport,
-} = require("../controllers/reportController");
-
-// FIX 2: Use the correct middleware function name
+// Apply authentication middleware to all routes in this file
 router.use(protect);
 
 // --- Routes ---
 
-// Route to get a list of all customers (for populating a dropdown, etc.)
-router.get("/customers", getAllCustomersForReport);
-
-// Route to generate a specific report for one customer
-router.get("/customer/:customerId", generateCustomerReport);
+// MODIFIED: This route now correctly matches the frontend request
+// e.g., GET /api/reports/60d...a1/daily?date=2025-10-05
+router.get("/:customerId/:period", generateCustomerReport);
 
 module.exports = router;
-
