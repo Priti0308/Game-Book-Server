@@ -1,5 +1,6 @@
 const Receipt = require("../models/Receipt");
 const Customer = require("../models/Customer");
+const Activity = require('../models/Activity'); // <-- 1. IMPORT ACTIVITY MODEL
 
 // @desc    Create a new receipt
 // @route   POST /api/receipts
@@ -9,11 +10,23 @@ const createReceipt = async (req, res) => {
     const receipt = new Receipt({
         ...req.body,
         date: new Date(req.body.date), // Ensure date is a proper Date object
-        vendorId: req.vendor._id      // Inject the logged-in vendor's ID
+        vendorId: req.vendor.id        // Inject the logged-in vendor's ID
     });
     
     await receipt.save();
-    res.status(201).json({ message: "Receipt saved successfully", receipt }); // Return the full receipt object
+
+    // --- 2. ADD THIS PART ---
+    // Log the activity after the receipt is successfully saved
+    if (receipt) {
+        await Activity.create({
+            vendorId: req.vendor.id,
+            type: 'NEW_RECEIPT',
+            description: `Receipt #${receipt.receiptNumber} created for '${receipt.customerName}'`,
+        });
+    }
+    // -------------------
+
+    res.status(201).json({ message: "Receipt saved successfully", receipt });
   } catch (error) {
     console.error("Error saving receipt:", error);
     res.status(500).json({ message: "Error saving receipt", error: error.message });
@@ -25,7 +38,8 @@ const createReceipt = async (req, res) => {
 // @access  Private
 const getAllReceipts = async (req, res) => {
   try {
-    const receipts = await Receipt.find({ vendorId: req.vendor._id }).sort({ date: -1 });
+    // Note: Changed req.vendor._id to req.vendor.id for consistency
+    const receipts = await Receipt.find({ vendorId: req.vendor.id }).sort({ date: -1 });
     res.json({ receipts });
   } catch (err) {
     console.error("Error fetching receipts:", err);
@@ -40,7 +54,7 @@ const updateReceipt = async (req, res) => {
     try {
         const { id } = req.params;
         const updatedReceipt = await Receipt.findOneAndUpdate(
-            { _id: id, vendorId: req.vendor._id }, // Security: ensure receipt belongs to vendor
+            { _id: id, vendorId: req.vendor.id }, // Security: ensure receipt belongs to vendor
             req.body, // The updated data from the frontend
             { new: true, runValidators: true } // Options: return the new version
         );
@@ -61,7 +75,7 @@ const updateReceipt = async (req, res) => {
 const deleteReceipt = async (req, res) => {
     try {
         const { id } = req.params;
-        const deletedReceipt = await Receipt.findOneAndDelete({ _id: id, vendorId: req.vendor._id });
+        const deletedReceipt = await Receipt.findOneAndDelete({ _id: id, vendorId: req.vendor.id });
 
         if (!deletedReceipt) {
             return res.status(404).json({ message: "Receipt not found or you are not authorized" });

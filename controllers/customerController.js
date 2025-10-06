@@ -1,99 +1,77 @@
-const Customer = require("../models/Customer");
-const Counter = require("../models/Counter");
-
-// Helper function to get the next serial number
-async function getNextSequence(vendorId) {
-  const counterName = `customerSrNo_${vendorId}`;
-  const result = await Counter.findByIdAndUpdate(
-    counterName,
-    { $inc: { seq: 1 } },
-    { new: true, upsert: true }
-  );
-  return result.seq;
-}
+const Customer = require('../models/Customer');
+const Activity = require('../models/Activity'); // <-- 1. IMPORT ACTIVITY MODEL
+const Vendor = require('../models/Vendor'); // Optional: If you need to reference Vendor
 
 // @desc    Create a new customer
 // @route   POST /api/customers
 // @access  Private
 const createCustomer = async (req, res) => {
   try {
-    // 1. Destructure the new 'company' field from the request body
-    const { name, contact, email, address } = req.body;
+    const { name, mobile, email, address } = req.body;
 
-    // 2. Add 'company' to the validation check
-    if (!name || !contact) {
-      return res.status(400).json({ message: "Name and contact are required." });
+    // Check if customer already exists for this vendor
+    const customerExists = await Customer.findOne({ mobile, vendorId: req.vendor.id });
+    if (customerExists) {
+      return res.status(400).json({ message: 'Customer with this mobile number already exists' });
     }
 
-    const vendorId = req.vendor._id;
-    const srNo = await getNextSequence(vendorId);
-
-    const customer = new Customer({
-      vendorId,
-      srNo,
+    const customer = await Customer.create({
       name,
-      contact,
+      mobile,
       email,
       address,
-     
+      vendorId: req.vendor.id, // Inject the logged-in vendor's ID
     });
 
-    await customer.save();
-    res.status(201).json({ message: "Customer added successfully", customer });
-  } catch (err) {
-    console.error(err);
-    if (err.code === 11000) {
-      return res.status(400).json({ message: "A customer with this contact number already exists." });
+    // --- 2. ADD THIS PART ---
+    // Log the activity after the customer is successfully created
+    if (customer) {
+      await Activity.create({
+        vendorId: req.vendor.id,
+        type: 'NEW_CUSTOMER',
+        description: `'${customer.name}' was added as a new customer`,
+      });
     }
-     if (err.name === 'ValidationError') {
-      return res.status(400).json({ message: err.message });
-    }
-    res.status(500).json({ message: "Server error while adding customer." });
+    // -------------------
+
+    res.status(201).json(customer);
+  } catch (error) {
+    console.error('Error creating customer:', error);
+    res.status(500).json({ message: 'Server error while creating customer' });
   }
 };
 
-// @desc    Get all customers for the vendor
+// @desc    Get all customers for the logged-in vendor
 // @route   GET /api/customers
 // @access  Private
 const getAllCustomers = async (req, res) => {
   try {
-    // This query correctly fetches all fields, including 'company'
-    const customers = await Customer.find({ vendorId: req.vendor._id }).sort({ srNo: 1 });
-    res.json({ customers });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed to fetch customers." });
+    const customers = await Customer.find({ vendorId: req.vendor.id }).sort({ createdAt: -1 });
+    res.status(200).json(customers);
+  } catch (error) {
+    console.error('Error fetching customers:', error);
+    res.status(500).json({ message: 'Server error while fetching customers' });
   }
 };
 
-// @desc    Update a specific customer
+// @desc    Update a customer
 // @route   PUT /api/customers/:id
 // @access  Private
 const updateCustomer = async (req, res) => {
   try {
-    const customer = await Customer.findById(req.params.id);
+    const customer = await Customer.findOne({ _id: req.params.id, vendorId: req.vendor.id });
 
     if (!customer) {
-      return res.status(404).json({ message: "Customer not found." });
+      return res.status(404).json({ message: 'Customer not found' });
     }
 
-    if (customer.vendorId.toString() !== req.vendor._id.toString()) {
-      return res.status(403).json({ message: "Access denied." });
-    }
-    
-    const updatedCustomer = await Customer.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
+    Object.assign(customer, req.body);
+    const updatedCustomer = await customer.save();
 
-    res.json({ message: "Customer updated successfully", customer: updatedCustomer });
-  } catch (err) {
-    console.error(err);
-    if (err.code === 11000) {
-      return res.status(400).json({ message: "Update failed. Another customer already has this contact number." });
-    }
-    res.status(500).json({ message: "Failed to update customer." });
+    res.status(200).json(updatedCustomer);
+  } catch (error) {
+    console.error('Error updating customer:', error);
+    res.status(500).json({ message: 'Server error while updating customer' });
   }
 };
 
@@ -102,22 +80,16 @@ const updateCustomer = async (req, res) => {
 // @access  Private
 const deleteCustomer = async (req, res) => {
   try {
-    const customer = await Customer.findById(req.params.id);
+    const customer = await Customer.findOneAndDelete({ _id: req.params.id, vendorId: req.vendor.id });
 
     if (!customer) {
-      return res.status(404).json({ message: "Customer not found." });
+      return res.status(404).json({ message: 'Customer not found' });
     }
 
-    if (customer.vendorId.toString() !== req.vendor._id.toString()) {
-      return res.status(403).json({ message: "Access denied." });
-    }
-
-    await Customer.findByIdAndDelete(req.params.id);
-
-    res.json({ message: "Customer deleted successfully." });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed to delete customer." });
+    res.status(200).json({ message: 'Customer removed successfully' });
+  } catch (error) {
+    console.error('Error deleting customer:', error);
+    res.status(500).json({ message: 'Server error while deleting customer' });
   }
 };
 

@@ -10,6 +10,7 @@ const vendorRoutes = require("./routes/vendorRoutes");
 const customerRoutes = require("./routes/customerRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const receiptRoutes = require("./routes/receiptRoutes");
+const activityRoutes = require('./routes/activityRoutes');
 
 const app = express();
 app.use(express.json());
@@ -25,8 +26,7 @@ app.use("/api/vendors", vendorRoutes);
 app.use("/api/customers", customerRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/receipts", receiptRoutes);
-
-
+app.use('/api/activities', activityRoutes);
 
 
 const PORT = process.env.PORT || 5000;
