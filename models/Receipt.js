@@ -14,8 +14,8 @@ const gameRowSchema = new mongoose.Schema({
     o: { type: String, default: '' },
     jod: { type: String, default: '' },
     ko: { type: String, default: '' },
-    pan: valueSchema, // CHANGED: Now expects an object { val1, val2 }
-    gun: valueSchema, // CHANGED: Now expects an object { val1, val2 }
+    pan: valueSchema,
+    gun: valueSchema,
     multiplier: { type: Number }
 }, { _id: false });
 
@@ -30,7 +30,7 @@ const receiptSchema = new mongoose.Schema({
     // --- Core References ---
     vendorId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User", // This is likely set in your controller from the logged-in user
+        ref: "User",
         required: true,
     },
     customerId: {
@@ -59,17 +59,19 @@ const receiptSchema = new mongoose.Schema({
     payment: { type: Number, default: 0 },
     remainingBalance: { type: Number, default: 0 },
     pendingAmount: { type: Number, default: 0 },
-    totalDue: { type: Number, default: 0 }, // ADDED: Your frontend sends this
+    totalDue: { type: Number, default: 0 },
     finalTotal: { type: Number, default: 0 },
     advanceAmount: { type: Number, default: 0 },
     cuttingAmount: { type: Number, default: 0 },
     jama: { type: Number, default: 0 },
     jamaTotal: { type: Number, default: 0 },
+    chuk: { type: Number, default: 0 }, // ADDED
+    finalTotalAfterChuk: { type: Number, default: 0 }, // ADDED
     oFinalTotal: { type: Number, default: 0 },
     jodFinalTotal: { type: Number, default: 0 },
     koFinalTotal: { type: Number, default: 0 },
-    panFinalTotal: { type: Number, default: 0 }, // ADDED: Was missing
-    gunFinalTotal: { type: Number, default: 0 }, // ADDED: Was missing
+    panFinalTotal: { type: Number, default: 0 },
+    gunFinalTotal: { type: Number, default: 0 },
 
 }, {
     timestamps: true, // Automatically add 'createdAt' and 'updatedAt' fields
