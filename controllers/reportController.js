@@ -1,15 +1,15 @@
 const Receipt = require('../models/Receipt');
 const Customer = require('../models/Customer');
 const moment = require('moment');
-const mongoose = require('mongoose'); // 💡 Import Mongoose to use ObjectId
 
-// Helper function updated to accept a vendorId
+// Helper function updated to be safer
 const calculateSum = async (startDate, endDate, vendorId) => {
     const result = await Receipt.aggregate([
         {
             $match: {
-                // ✅ ADDED: Ensures summaries are only for the logged-in vendor
-                vendorId: new mongoose.Types.ObjectId(vendorId), 
+                // ✅ FIX: Let Mongoose handle the ObjectId conversion safely.
+                // This prevents crashes if vendorId is in a weird format.
+                vendorId: vendorId, 
                 date: {
                     $gte: startDate.toDate(),
                     $lte: endDate.toDate()
@@ -28,12 +28,14 @@ const calculateSum = async (startDate, endDate, vendorId) => {
 
 // --- Route Handler Functions ---
 
-// GET /api/reports/summary/daily
 const getDailySummary = async (req, res) => {
+    // ✅ FIX: Added a safety check for the user
+    if (!req.user || !req.user.id) {
+        return res.status(401).json({ message: "Not authorized, user data missing from token." });
+    }
     try {
         const todayStart = moment().startOf('day');
         const todayEnd = moment().endOf('day');
-        // ✅ ADDED: Pass the logged-in user's ID to the helper function
         const totalIncome = await calculateSum(todayStart, todayEnd, req.user.id);
         res.json({ totalIncome });
     } catch (error) {
@@ -41,12 +43,13 @@ const getDailySummary = async (req, res) => {
     }
 };
 
-// GET /api/reports/summary/weekly
 const getWeeklySummary = async (req, res) => {
+    if (!req.user || !req.user.id) {
+        return res.status(401).json({ message: "Not authorized, user data missing from token." });
+    }
     try {
         const weekStart = moment().startOf('week');
         const weekEnd = moment().endOf('week');
-        // ✅ ADDED: Pass the logged-in user's ID
         const totalIncome = await calculateSum(weekStart, weekEnd, req.user.id);
         res.json({ totalIncome });
     } catch (error) {
@@ -54,12 +57,13 @@ const getWeeklySummary = async (req, res) => {
     }
 };
 
-// GET /api/reports/summary/monthly
 const getMonthlySummary = async (req, res) => {
+    if (!req.user || !req.user.id) {
+        return res.status(401).json({ message: "Not authorized, user data missing from token." });
+    }
     try {
         const monthStart = moment().startOf('month');
         const monthEnd = moment().endOf('month');
-        // ✅ ADDED: Pass the logged-in user's ID
         const totalIncome = await calculateSum(monthStart, monthEnd, req.user.id);
         res.json({ totalIncome });
     } catch (error) {
@@ -67,15 +71,15 @@ const getMonthlySummary = async (req, res) => {
     }
 };
 
-// GET /api/reports/customers/all-balances
 const getAllCustomerBalances = async (req, res) => {
+    if (!req.user || !req.user.id) {
+        return res.status(401).json({ message: "Not authorized, user data missing from token." });
+    }
     try {
-        // ✅ ADDED: Filter customers to only those owned by the logged-in vendor
         const customers = await Customer.find({ vendorId: req.user.id }).sort({ srNo: 1 }).lean();
 
         const customersWithLatestBalance = await Promise.all(
             customers.map(async (customer) => {
-                // ✅ ADDED: Filter receipts by vendorId to get the correct latest balance
                 const latestReceipt = await Receipt.findOne({ 
                     customerId: customer._id,
                     vendorId: req.user.id 
@@ -96,7 +100,6 @@ const getAllCustomerBalances = async (req, res) => {
     }
 };
 
-// Export all functions
 module.exports = {
     getDailySummary,
     getWeeklySummary,
