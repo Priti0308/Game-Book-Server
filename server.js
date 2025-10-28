@@ -11,6 +11,7 @@ const customerRoutes = require("./routes/customerRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const receiptRoutes = require("./routes/receiptRoutes");
 const activityRoutes = require('./routes/activityRoutes');
+const shortcutRoutes = require('./routes/shortcutRoutes');
 
 const app = express();
 app.use(express.json());
@@ -27,6 +28,7 @@ app.use("/api/customers", customerRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/receipts", receiptRoutes);
 app.use('/api/activities', activityRoutes);
+app.use('/api/shortcuts', shortcutRoutes);
 
 
 const PORT = process.env.PORT || 5000;
