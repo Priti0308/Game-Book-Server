@@ -3,14 +3,12 @@ const Customer = require('../models/Customer');
 const moment = require('moment');
 
 exports.saveManualIncomes = async (req, res) => {
-    const incomes = req.body;
-
-    // ✅ **ADDED A CHECK HERE**
-    // First, make sure the user is properly authenticated by the middleware.
-    if (!req.user || !req.user.id) {
-        return res.status(401).json({ message: "Not authorized, user data missing." });
+    // ✅ FIX: Check for req.vendor, not req.user
+    if (!req.vendor || !req.vendor.id) {
+        return res.status(401).json({ message: "Not authorized, vendor data missing from token." });
     }
 
+    const incomes = req.body;
     if (!Array.isArray(incomes) || incomes.length === 0) {
         return res.status(400).json({ message: "Invalid data format." });
     }
@@ -47,7 +45,8 @@ exports.saveManualIncomes = async (req, res) => {
                 $push: { gameRows: { $each: newGameRows } },
                 $inc: { totalIncome: totalNewIncome },
                 $setOnInsert: {
-                    vendorId: req.user.id, // This is now safe to use
+                    // ✅ FIX: Use req.vendor.id
+                    vendorId: req.vendor.id, 
                     customerName: customer.name,
                     businessName: "Bappa Gaming",
                     date: moment().toDate()
