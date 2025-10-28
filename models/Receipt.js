@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
 
-// Defines the structure for the Pan/Gun values, matching { pan: { val1, val2 } }
 const valueSchema = new mongoose.Schema({
     val1: { type: String, default: "" },
     val2: { type: String, default: "" }
