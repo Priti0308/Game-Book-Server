@@ -2,93 +2,122 @@ const Receipt = require('../models/Receipt');
 const Customer = require('../models/Customer');
 const moment = require('moment');
 
-// Helper function remains the same
-const calculateSum = async (startDate, endDate, vendorId) => {
+/**
+ * A helper function to calculate both total income and total profit for a given period.
+ * Profit is calculated as (totalIncome - totalPayment).
+ * @param {Date} startDate - The start of the date range.
+ * @param {Date} endDate - The end of the date range.
+ * @param {String} vendorId - The ID of the logged-in vendor to scope the query.
+ * @returns {Object} An object containing totalIncome and totalProfit.
+ */
+const calculateSummary = async (startDate, endDate, vendorId) => {
     const result = await Receipt.aggregate([
         {
             $match: {
-                vendorId: vendorId, 
-                date: {
-                    $gte: startDate.toDate(),
-                    $lte: endDate.toDate()
-                }
+                vendorId: vendorId,
+                date: { $gte: startDate.toDate(), $lte: endDate.toDate() }
             }
         },
         {
             $group: {
                 _id: null,
-                totalIncome: { $sum: '$totalIncome' }
+                totalIncome: { $sum: '$totalIncome' },
+                // Use $ifNull to treat missing payment fields as 0
+                totalPayment: { $sum: { $ifNull: ['$payment', 0] } } 
             }
         }
     ]);
-    return result.length > 0 ? result[0].totalIncome : 0;
+
+    if (result.length === 0) {
+        return { totalIncome: 0, totalProfit: 0 };
+    }
+
+    const totalIncome = result[0].totalIncome || 0;
+    const totalPayment = result[0].totalPayment || 0;
+    const totalProfit = totalIncome - totalPayment;
+
+    return { totalIncome, totalProfit };
 };
 
 // --- Route Handler Functions ---
 
-const getDailySummary = async (req, res) => {
-    // ✅ FIX: Check for req.vendor instead of req.user
-    if (!req.vendor || !req.vendor.id) {
-        return res.status(401).json({ message: "Not authorized, vendor data missing from token." });
-    }
-    try {
-        const todayStart = moment().startOf('day');
-        const todayEnd = moment().endOf('day');
-        // ✅ FIX: Use req.vendor.id
-        const totalIncome = await calculateSum(todayStart, todayEnd, req.vendor.id);
-        res.json({ totalIncome });
-    } catch (error) {
-        res.status(500).json({ message: 'Error fetching daily summary', error: error.message });
-    }
-};
-
+/**
+ * GET /api/reports/summary/weekly
+ * Calculates the total income and profit for the current week (Mon-Sun).
+ */
 const getWeeklySummary = async (req, res) => {
     if (!req.vendor || !req.vendor.id) {
-        return res.status(401).json({ message: "Not authorized, vendor data missing from token." });
+        return res.status(401).json({ message: "Not authorized." });
     }
     try {
-        const weekStart = moment().startOf('week');
-        const weekEnd = moment().endOf('week');
-        // ✅ FIX: Use req.vendor.id
-        const totalIncome = await calculateSum(weekStart, weekEnd, req.vendor.id);
-        res.json({ totalIncome });
+        const weekStart = moment().startOf('isoWeek');
+        const weekEnd = moment().endOf('isoWeek');
+        const summary = await calculateSummary(weekStart, weekEnd, req.vendor.id);
+        res.json(summary);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching weekly summary', error: error.message });
     }
 };
 
+/**
+ * GET /api/reports/summary/monthly
+ * Calculates the total income and profit for the current month.
+ */
 const getMonthlySummary = async (req, res) => {
     if (!req.vendor || !req.vendor.id) {
-        return res.status(401).json({ message: "Not authorized, vendor data missing from token." });
+        return res.status(401).json({ message: "Not authorized." });
     }
     try {
         const monthStart = moment().startOf('month');
         const monthEnd = moment().endOf('month');
-        // ✅ FIX: Use req.vendor.id
-        const totalIncome = await calculateSum(monthStart, monthEnd, req.vendor.id);
-        res.json({ totalIncome });
+        const summary = await calculateSummary(monthStart, monthEnd, req.vendor.id);
+        res.json(summary);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching monthly summary', error: error.message });
     }
 };
 
-const getAllCustomerBalances = async (req, res) => {
+/**
+ * GET /api/reports/summary/yearly
+ * Calculates the total income and profit for the current year.
+ */
+const getYearlySummary = async (req, res) => {
     if (!req.vendor || !req.vendor.id) {
-        return res.status(401).json({ message: "Not authorized, vendor data missing from token." });
+        return res.status(401).json({ message: "Not authorized." });
     }
     try {
-        // ✅ FIX: Filter customers by req.vendor.id
+        const yearStart = moment().startOf('year');
+        const yearEnd = moment().endOf('year');
+        const summary = await calculateSummary(yearStart, yearEnd, req.vendor.id);
+        res.json(summary);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching yearly summary', error: error.message });
+    }
+};
+
+/**
+ * GET /api/reports/customers/all-balances
+ * Fetches all customers for the logged-in vendor and their final balance 
+ * from their most recent receipt.
+ */
+const getAllCustomerBalances = async (req, res) => {
+    if (!req.vendor || !req.vendor.id) {
+        return res.status(401).json({ message: "Not authorized." });
+    }
+    try {
+        // Find customers belonging only to the logged-in vendor
         const customers = await Customer.find({ vendorId: req.vendor.id }).sort({ srNo: 1 }).lean();
 
         const customersWithLatestBalance = await Promise.all(
             customers.map(async (customer) => {
-                // ✅ FIX: Filter receipts by req.vendor.id
+                // Find the latest receipt for this customer AND this vendor
                 const latestReceipt = await Receipt.findOne({ 
                     customerId: customer._id,
                     vendorId: req.vendor.id 
                 })
                 .sort({ date: -1, createdAt: -1 });
 
+                // Set the final balance (antim total)
                 customer.latestBalance = latestReceipt ? latestReceipt.finalTotalAfterChuk : 0;
                 
                 return customer;
@@ -103,9 +132,10 @@ const getAllCustomerBalances = async (req, res) => {
     }
 };
 
+// Export all functions to be used in the routes file
 module.exports = {
-    getDailySummary,
     getWeeklySummary,
     getMonthlySummary,
+    getYearlySummary,
     getAllCustomerBalances
 };

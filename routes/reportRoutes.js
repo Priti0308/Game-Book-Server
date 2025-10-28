@@ -2,18 +2,18 @@ const express = require('express');
 const router = express.Router();
 const {protect} = require('../middleware/authMiddleware');
 
-// Destructure the functions from the imported controller object
+// ... (imports)
 const {
-    getDailySummary,
     getWeeklySummary,
     getMonthlySummary,
+    getYearlySummary, // Import new function
     getAllCustomerBalances
 } = require('../controllers/reportController');
 
-// Now use the imported functions as handlers
-router.get('/summary/daily', protect, getDailySummary);
+// ... (other routes)
 router.get('/summary/weekly', protect, getWeeklySummary);
 router.get('/summary/monthly', protect, getMonthlySummary);
+router.get('/summary/yearly', protect, getYearlySummary); // Add new route
 router.get('/customers/all-balances', protect, getAllCustomerBalances);
 
 module.exports = router;
