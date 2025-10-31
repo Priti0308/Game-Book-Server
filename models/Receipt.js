@@ -1,8 +1,12 @@
 const mongoose = require("mongoose");
 
+// Extends to include checkboxes (sp/dp) for complex fields like 'pan' in the frontend,
+// even if they were missing in the provided backend schema.
 const valueSchema = new mongoose.Schema({
     val1: { type: String, default: "" },
-    val2: { type: String, default: "" }
+    val2: { type: String, default: "" },
+    sp: { type: Boolean, default: false }, // Added for pan
+    dp: { type: Boolean, default: false }  // Added for pan
 }, { _id: false });
 
 // Defines the structure for each object in the `gameRows` array
@@ -15,6 +19,9 @@ const gameRowSchema = new mongoose.Schema({
     ko: { type: String, default: '' },
     pan: valueSchema,
     gun: valueSchema,
+    // --- START UPDATES ---
+    jackpot: valueSchema, // Added 'jackpot' field from frontend logic
+    // --- END UPDATES ---
     multiplier: { type: Number }
 }, { _id: false });
 
@@ -42,6 +49,9 @@ const receiptSchema = new mongoose.Schema({
     businessName: { type: String, required: true, trim: true },
     customerName: { type: String, required: true, trim: true },
     customerCompany: { type: String, trim: true },
+    
+    // --- Custom Deduction Rate ---
+    deductionRate: { type: String, default: "10" }, // Added deductionRate from formData
 
     // --- Date and Time (from formData state) ---
     date: { type: Date, required: true },
@@ -71,6 +81,9 @@ const receiptSchema = new mongoose.Schema({
     koFinalTotal: { type: Number, default: 0 },
     panFinalTotal: { type: Number, default: 0 },
     gunFinalTotal: { type: Number, default: 0 },
+    // --- START UPDATES ---
+    jackpotFinalTotal: { type: Number, default: 0 }, // Added final jackpot total
+    // --- END UPDATES ---
 
 }, {
     timestamps: true, // Automatically adds createdAt and updatedAt fields
