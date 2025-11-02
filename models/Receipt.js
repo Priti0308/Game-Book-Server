@@ -19,9 +19,7 @@ const gameRowSchema = new mongoose.Schema({
     ko: { type: String, default: '' },
     pan: valueSchema,
     gun: valueSchema,
-    // --- START UPDATES ---
-    jackpot: valueSchema, // Added 'jackpot' field from frontend logic
-    // --- END UPDATES ---
+    jackpot: valueSchema, // Correctly added
     multiplier: { type: Number }
 }, { _id: false });
 
@@ -30,6 +28,13 @@ const openCloseSchema = new mongoose.Schema({
     open: { type: String, trim: true },
     close: { type: String, trim: true },
     jod: { type: String, trim: true }
+}, { _id: false });
+
+// --- NEW ---
+// Defines the structure for the Berij/Frak notation values
+const notationSchema = new mongoose.Schema({
+    berij: { type: String, default: "" },
+    frak: { type: String, default: "" }
 }, { _id: false });
 
 const receiptSchema = new mongoose.Schema({
@@ -51,15 +56,26 @@ const receiptSchema = new mongoose.Schema({
     customerCompany: { type: String, trim: true },
     
     // --- Custom Deduction Rate ---
-    deductionRate: { type: String, default: "10" }, // Added deductionRate from formData
+    deductionRate: { type: String, default: "10" },
 
     // --- Date and Time (from formData state) ---
     date: { type: Date, required: true },
     day: { type: String, trim: true },
 
     // --- Dynamic Data Structures (from state) ---
-    gameRows: [gameRowSchema],       // Matches the 'gameRows' state array
-    openCloseValues: openCloseSchema, // Matches the 'openCloseValues' state object
+    gameRows: [gameRowSchema],
+    openCloseValues: openCloseSchema,
+    // --- NEW: Added notationValues ---
+    notationValues: notationSchema,
+
+    // --- Financial Inputs (from formData state) ---
+    pendingAmount: { type: Number, default: 0 },
+    advanceAmount: { type: Number, default: 0 },
+    cuttingAmount: { type: Number, default: 0 },
+    jama: { type: Number, default: 0 },
+    chuk: { type: Number, default: 0 },
+    // --- NEW: Added isChukEnabled ---
+    isChukEnabled: { type: Boolean, default: false },
 
     // --- Financial Calculations (from calculationResults object) ---
     totalIncome: { type: Number, default: 0 },
@@ -67,23 +83,16 @@ const receiptSchema = new mongoose.Schema({
     afterDeduction: { type: Number, default: 0 },
     payment: { type: Number, default: 0 },
     remainingBalance: { type: Number, default: 0 },
-    pendingAmount: { type: Number, default: 0 },
     totalDue: { type: Number, default: 0 },
-    jama: { type: Number, default: 0 },
     jamaTotal: { type: Number, default: 0 },
-    chuk: { type: Number, default: 0 },
     finalTotalAfterChuk: { type: Number, default: 0 },
-    advanceAmount: { type: Number, default: 0 },
-    cuttingAmount: { type: Number, default: 0 },
     finalTotal: { type: Number, default: 0 },
     oFinalTotal: { type: Number, default: 0 },
     jodFinalTotal: { type: Number, default: 0 },
     koFinalTotal: { type: Number, default: 0 },
     panFinalTotal: { type: Number, default: 0 },
     gunFinalTotal: { type: Number, default: 0 },
-    // --- START UPDATES ---
-    jackpotFinalTotal: { type: Number, default: 0 }, // Added final jackpot total
-    // --- END UPDATES ---
+    jackpotFinalTotal: { type: Number, default: 0 }, // Correctly added
 
 }, {
     timestamps: true, // Automatically adds createdAt and updatedAt fields
