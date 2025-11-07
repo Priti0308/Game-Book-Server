@@ -122,9 +122,9 @@ const getAllCustomerBalances = async (req, res) => {
                 customer.latestBalance = latestReceipt ? latestReceipt.finalTotalAfterChuk : 0;
                 
                 // --- THIS IS THE FIX ---
-                // Ensure advanceAmount is present and is a number, defaulting to 0
-                // This assumes `advanceAmount` is a field on your Customer model.
-                customer.advanceAmount = customer.advanceAmount || 0;
+                // The customer's current advance balance is the `finalTotal` 
+                // (from the "आड" box) of their most recent receipt.
+                customer.advanceAmount = latestReceipt ? latestReceipt.finalTotal : 0;
                 // --- END FIX ---
                 
                 return customer;

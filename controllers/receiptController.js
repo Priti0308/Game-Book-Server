@@ -1,148 +1,205 @@
-const Receipt = require('../models/Receipt');
-const Customer = require('../models/Customer');
-const moment = require('moment');
+// const Receipt = require("../models/Receipt");
+// // The Activity model is optional but good for logging changes.
+// // const Activity = require('../models/Activity'); 
 
-/**
- * A helper function to calculate both total income and total profit for a given period.
- * Profit is calculated as (totalIncome - totalPayment).
- * @param {Date} startDate - The start of the date range.
- * @param {Date} endDate - The end of the date range.
- * @param {String} vendorId - The ID of the logged-in vendor to scope the query.
- * @returns {Object} An object containing totalIncome and totalProfit.
- */
-const calculateSummary = async (startDate, endDate, vendorId) => {
-    const result = await Receipt.aggregate([
-        {
-            $match: {
-                vendorId: vendorId,
-                date: { $gte: startDate.toDate(), $lte: endDate.toDate() }
-            }
-        },
-        {
-            $group: {
-                _id: null,
-                totalIncome: { $sum: '$totalIncome' },
-                // Use $ifNull to treat missing payment fields as 0
-                totalPayment: { $sum: { $ifNull: ['$payment', 0] } } 
-            }
-        }
-    ]);
+// // @desc    Create a new receipt
+// // @route   POST /api/receipts
+// // @access  Private
+// const createReceipt = async (req, res) => {
+//   try {
+//     const receiptData = {
+//         ...req.body,
+//         date: new Date(req.body.date), // Ensure date is stored as a valid Date object
+//         vendorId: req.vendor.id        // Inject the logged-in vendor's ID from middleware
+//     };
 
-    if (result.length === 0) {
-        return { totalIncome: 0, totalProfit: 0 };
-    }
+//     const receipt = new Receipt(receiptData);
+//     await receipt.save();
 
-    const totalIncome = result[0].totalIncome || 0;
-    const totalPayment = result[0].totalPayment || 0;
-    const totalProfit = totalIncome - totalPayment;
+//     // Optional: Log this action
+//     // await Activity.create({
+//     //   vendorId: req.vendor.id,
+//     //   type: 'NEW_RECEIPT',
+//     //   description: `Receipt created for customer '${receipt.customerName}'`,
+//     // });
 
-    return { totalIncome, totalProfit };
-};
+//     res.status(201).json({ message: "Receipt saved successfully", receipt });
+//   } catch (error) {
+//     console.error("Error saving receipt:", error);
+//     res.status(500).json({ message: "Error saving receipt", error: error.message });
+//   }
+// };
 
-// --- Route Handler Functions ---
+// // @desc    Get all receipts for the logged-in vendor
+// // @route   GET /api/receipts
+// // @access  Private
+// const getAllReceipts = async (req, res) => {
+//   try {
+//     // Find all receipts that belong to the currently logged-in vendor
+//     const receipts = await Receipt.find({ vendorId: req.vendor.id }).sort({ date: -1 });
+//     res.status(200).json({ receipts });
+//   } catch (err) {
+//     console.error("Error fetching receipts:", err);
+//     res.status(500).json({ message: "Failed to fetch receipts" });
+//   }
+// };
 
-/**
- * GET /api/reports/summary/weekly
- * Calculates the total income and profit for the current week (Mon-Sun).
- */
-const getWeeklySummary = async (req, res) => {
-    if (!req.vendor || !req.vendor.id) {
-        return res.status(401).json({ message: "Not authorized." });
-    }
+// // @desc    Update a specific receipt
+// // @route   PUT /api/receipts/:id
+// // @access  Private
+// const updateReceipt = async (req, res) => {
+//     try {
+//         const { id } = req.params;
+        
+//         // Find the receipt by its ID and ensure it belongs to the logged-in vendor for security
+//         const updatedReceipt = await Receipt.findOneAndUpdate(
+//             { _id: id, vendorId: req.vendor.id }, 
+//             req.body, // The updated data from the frontend
+//             { new: true, runValidators: true } // Options: return the new version and run schema validators
+//         );
+
+//         if (!updatedReceipt) {
+//             return res.status(404).json({ message: "Receipt not found or you are not authorized" });
+//         }
+//         res.status(200).json({ message: "Receipt updated successfully", receipt: updatedReceipt });
+//     } catch (err) {
+//         console.error("Error updating receipt:", err);
+//         res.status(500).json({ message: "Failed to update receipt" });
+//     }
+// };
+
+// // @desc    Delete a receipt
+// // @route   DELETE /api/receipts/:id
+// // @access  Private
+// const deleteReceipt = async (req, res) => {
+//     try {
+//         const { id } = req.params;
+
+//         // Find the receipt by its ID and ensure it belongs to the logged-in vendor
+//         const deletedReceipt = await Receipt.findOneAndDelete({ _id: id, vendorId: req.vendor.id });
+
+//         if (!deletedReceipt) {
+//             return res.status(404).json({ message: "Receipt not found or you are not authorized" });
+//         }
+//         res.status(200).json({ message: "Receipt deleted successfully" });
+//     } catch (err) {
+//         console.error("Error deleting receipt:", err);
+//         res.status(500).json({ message: "Failed to delete receipt" });
+//     }
+// };
+
+// module.exports = {
+//   createReceipt,
+//   getAllReceipts,
+//   updateReceipt,
+//   deleteReceipt,
+// };
+
+const Receipt = require("../models/Receipt");
+// The Activity model is optional but good for logging changes.
+// const Activity = require('../models/Activity'); 
+
+// @desc    Create a new receipt
+// @route   POST /api/receipts
+// @access  Private
+const createReceipt = async (req, res) => {
     try {
-        const weekStart = moment().startOf('isoWeek');
-        const weekEnd = moment().endOf('isoWeek');
-        const summary = await calculateSummary(weekStart, weekEnd, req.vendor.id);
-        res.json(summary);
+        const receiptData = {
+            ...req.body,
+            // Ensure date is stored as a valid Date object
+            date: new Date(req.body.date), 
+            // Inject the logged-in vendor's ID from middleware
+            vendorId: req.vendor.id 
+        };
+
+        const receipt = new Receipt(receiptData);
+        await receipt.save();
+
+        // Optional: Log this action
+        // await Activity.create({
+        //   vendorId: req.vendor.id,
+        //   type: 'NEW_RECEIPT',
+        //   description: `Receipt created for customer '${receipt.customerName}'`,
+        // });
+
+        res.status(201).json({ message: "Receipt saved successfully", receipt });
     } catch (error) {
-        res.status(500).json({ message: 'Error fetching weekly summary', error: error.message });
+        console.error("Error saving receipt:", error);
+        // Handle validation errors specifically if needed
+        const message = error.name === 'ValidationError' ? error.message : "Error saving receipt";
+        res.status(500).json({ message, error: error.message });
     }
 };
 
-/**
- * GET /api/reports/summary/monthly
- * Calculates the total income and profit for the current month.
- */
-const getMonthlySummary = async (req, res) => {
-    if (!req.vendor || !req.vendor.id) {
-        return res.status(401).json({ message: "Not authorized." });
-    }
+// @desc    Get all receipts for the logged-in vendor
+// @route   GET /api/receipts
+// @access  Private
+const getAllReceipts = async (req, res) => {
     try {
-        const monthStart = moment().startOf('month');
-        const monthEnd = moment().endOf('month');
-        const summary = await calculateSummary(monthStart, monthEnd, req.vendor.id);
-        res.json(summary);
-    } catch (error) {
-        res.status(500).json({ message: 'Error fetching monthly summary', error: error.message });
+        // Find all receipts that belong to the currently logged-in vendor
+        const receipts = await Receipt.find({ vendorId: req.vendor.id }).sort({ date: -1 });
+        res.status(200).json({ receipts });
+    } catch (err) {
+        console.error("Error fetching receipts:", err);
+        res.status(500).json({ message: "Failed to fetch receipts" });
     }
 };
 
-/**
- * GET /api/reports/summary/yearly
- * Calculates the total income and profit for the current year.
- */
-const getYearlySummary = async (req, res) => {
-    if (!req.vendor || !req.vendor.id) {
-        return res.status(401).json({ message: "Not authorized." });
-    }
+// @desc    Update a specific receipt
+// @route   PUT /api/receipts/:id
+// @access  Private
+const updateReceipt = async (req, res) => {
     try {
-        const yearStart = moment().startOf('year');
-        const yearEnd = moment().endOf('year');
-        const summary = await calculateSummary(yearStart, yearEnd, req.vendor.id);
-        res.json(summary);
-    } catch (error) {
-        res.status(500).json({ message: 'Error fetching yearly summary', error: error.message });
-    }
-};
+        const { id } = req.params;
+        
+        // Prepare update data, ensuring the date field is converted back to a Date object
+        const updateData = {
+            ...req.body,
+            date: new Date(req.body.date), 
+        };
 
-/**
- * GET /api/reports/customers/all-balances
- * Fetches all customers for the logged-in vendor and their final balance 
- * from their most recent receipt, AND their total advance amount.
- */
-const getAllCustomerBalances = async (req, res) => {
-    if (!req.vendor || !req.vendor.id) {
-        return res.status(401).json({ message: "Not authorized." });
-    }
-    try {
-        // Find customers belonging only to the logged-in vendor
-        // .lean() fetches plain JS objects, which is faster and includes all model fields
-        const customers = await Customer.find({ vendorId: req.vendor.id }).sort({ srNo: 1 }).lean();
-
-        const customersWithLatestBalance = await Promise.all(
-            customers.map(async (customer) => {
-                // Find the latest receipt for this customer AND this vendor
-                const latestReceipt = await Receipt.findOne({ 
-                    customerId: customer._id,
-                    vendorId: req.vendor.id 
-                })
-                .sort({ date: -1, createdAt: -1 });
-
-                // Set the final balance (antim total)
-                customer.latestBalance = latestReceipt ? latestReceipt.finalTotalAfterChuk : 0;
-                
-                // --- THIS IS THE FIX ---
-                // The customer's current advance balance is the `finalTotal` 
-                // (from the "आड" box) of their most recent receipt.
-                customer.advanceAmount = latestReceipt ? latestReceipt.finalTotal : 0;
-                // --- END FIX ---
-                
-                return customer;
-            })
+        // Find the receipt by its ID and ensure it belongs to the logged-in vendor for security
+        const updatedReceipt = await Receipt.findOneAndUpdate(
+            { _id: id, vendorId: req.vendor.id }, 
+            updateData, 
+            { new: true, runValidators: true } // Options: return the new version and run schema validators
         );
 
-        res.json(customersWithLatestBalance);
-
-    } catch (error) {
-        console.error("Error fetching customer balances:", error);
-        res.status(500).json({ message: 'Error fetching customer balances', error: error.message });
+        if (!updatedReceipt) {
+            return res.status(404).json({ message: "Receipt not found or you are not authorized" });
+        }
+        res.status(200).json({ message: "Receipt updated successfully", receipt: updatedReceipt });
+    } catch (err) {
+        console.error("Error updating receipt:", err);
+        // Handle validation errors specifically if needed
+        const message = err.name === 'ValidationError' ? err.message : "Failed to update receipt";
+        res.status(500).json({ message, error: err.message });
     }
 };
 
-// Export all functions to be used in the routes file
+// @desc    Delete a receipt
+// @route   DELETE /api/receipts/:id
+// @access  Private
+const deleteReceipt = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Find the receipt by its ID and ensure it belongs to the logged-in vendor
+        const deletedReceipt = await Receipt.findOneAndDelete({ _id: id, vendorId: req.vendor.id });
+
+        if (!deletedReceipt) {
+            return res.status(404).json({ message: "Receipt not found or you are not authorized" });
+        }
+        res.status(200).json({ message: "Receipt deleted successfully" });
+    } catch (err) {
+        console.error("Error deleting receipt:", err);
+        res.status(500).json({ message: "Failed to delete receipt" });
+    }
+};
+
 module.exports = {
-    getWeeklySummary,
-    getMonthlySummary,
-    getYearlySummary,
-    getAllCustomerBalances
+    createReceipt,
+    getAllReceipts,
+    updateReceipt,
+    deleteReceipt,
 };
