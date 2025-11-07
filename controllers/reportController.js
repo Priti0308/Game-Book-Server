@@ -98,7 +98,7 @@ const getYearlySummary = async (req, res) => {
 /**
  * GET /api/reports/customers/all-balances
  * Fetches all customers for the logged-in vendor and their final balance 
- * from their most recent receipt.
+ * from their most recent receipt, AND their total advance amount.
  */
 const getAllCustomerBalances = async (req, res) => {
     if (!req.vendor || !req.vendor.id) {
@@ -106,6 +106,7 @@ const getAllCustomerBalances = async (req, res) => {
     }
     try {
         // Find customers belonging only to the logged-in vendor
+        // .lean() fetches plain JS objects, which is faster and includes all model fields
         const customers = await Customer.find({ vendorId: req.vendor.id }).sort({ srNo: 1 }).lean();
 
         const customersWithLatestBalance = await Promise.all(
@@ -119,6 +120,12 @@ const getAllCustomerBalances = async (req, res) => {
 
                 // Set the final balance (antim total)
                 customer.latestBalance = latestReceipt ? latestReceipt.finalTotalAfterChuk : 0;
+                
+                // --- THIS IS THE FIX ---
+                // Ensure advanceAmount is present and is a number, defaulting to 0
+                // This assumes `advanceAmount` is a field on your Customer model.
+                customer.advanceAmount = customer.advanceAmount || 0;
+                // --- END FIX ---
                 
                 return customer;
             })
