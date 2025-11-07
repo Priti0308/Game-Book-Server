@@ -13,9 +13,20 @@ const moment = require('moment');
 const calculateSummary = async (startDate, endDate, vendorId) => {
     const result = await Receipt.aggregate([
         {
+            // --- NEW STAGE ---
+            // Convert the stored date (which is an ISO string) into a
+            // proper BSON Date object so we can reliably compare it.
+            $addFields: {
+                convertedDate: { $dateFromString: { dateString: "$date" } }
+            }
+        },
+        {
             $match: {
                 vendorId: vendorId,
-                date: { $gte: startDate.toDate(), $lte: endDate.toDate() }
+                // --- UPDATED ---
+                // Now we match against our new, reliable convertedDate field
+                // instead of the original 'date' string.
+                convertedDate: { $gte: startDate.toDate(), $lte: endDate.toDate() }
             }
         },
         {
