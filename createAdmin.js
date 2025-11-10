@@ -18,8 +18,8 @@ const createAdmin = async () => {
     console.log("✅ Connected to MongoDB");
 
     // Admin credentials
-    const username = "admin";
-    const password = "admin123"; // ⚠️ change this in production
+    const username = "8446348461";
+    const password = "Prarambh@0001"; // ⚠️ change this in production
     const role = "admin";
 
     // Check if admin already exists
